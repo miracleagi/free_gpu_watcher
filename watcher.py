@@ -223,20 +223,15 @@ def build_table(statuses: list[HostStatus], config: Config) -> Table:
 # ─── Notification state ───────────────────────────────────────────────────────
 
 class NotifyState:
-    """检测 GPU 从忙变闲（或长时间仍空闲）时触发通知，避免轰炸。"""
+    """检测 GPU 从忙变闲时触发通知。"""
 
-    def __init__(self, cooldown: int) -> None:
-        self.cooldown = cooldown
-        # (host_name, gpu_index) -> last notify timestamp
-        self._last_notified: dict[tuple[str, int], float] = {}
-        # (host_name, gpu_index) -> was idle in last round
+    def __init__(self) -> None:
         self._prev_idle: dict[tuple[str, int], bool] = {}
 
     def check(
         self, statuses: list[HostStatus], config: Config
     ) -> list[tuple[str, GPUInfo]]:
-        """返回本轮需要通知的 (host_name, gpu) 列表。"""
-        now = time.monotonic()
+        """返回本轮新变空闲的 (host_name, gpu) 列表。"""
         events: list[tuple[str, GPUInfo]] = []
 
         for status in statuses:
@@ -244,14 +239,9 @@ class NotifyState:
                 key = (status.name, gpu.index)
                 current_idle = is_idle(gpu, config)
                 was_idle = self._prev_idle.get(key, False)
-                last_t = self._last_notified.get(key, 0.0)
 
-                became_free = current_idle and not was_idle
-                still_free_timeout = current_idle and (now - last_t >= self.cooldown)
-
-                if became_free or still_free_timeout:
+                if current_idle and not was_idle:
                     events.append((status.name, gpu))
-                    self._last_notified[key] = now
 
                 self._prev_idle[key] = current_idle
 
@@ -261,7 +251,7 @@ class NotifyState:
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 async def run(config: Config, once: bool = False) -> None:
-    notify_state = NotifyState(cooldown=config.notify_cooldown)
+    notify_state = NotifyState()
 
     if once:
         statuses = await poll_all(config.hosts, config)
