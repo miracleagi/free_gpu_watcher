@@ -250,6 +250,38 @@ class NotifyState:
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
+async def query_idle(config: Config, as_json: bool = False) -> None:
+    import json
+    statuses = await poll_all(config.hosts, config)
+    result: dict[str, list[dict]] = {}
+    for status in statuses:
+        idle_gpus = [g for g in status.gpus if is_idle(g, config)]
+        if idle_gpus:
+            result[status.name] = [
+                {
+                    "index": g.index,
+                    "name": g.name,
+                    "memory_used_gb": round(g.memory_used_mb / 1024, 1),
+                    "memory_total_gb": round(g.memory_total_mb / 1024, 1),
+                    "utilization_pct": g.utilization_pct,
+                }
+                for g in idle_gpus
+            ]
+    if as_json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
+    if not result:
+        console.print("[dim]当前无空闲 GPU[/dim]")
+        return
+    for host, gpus in result.items():
+        indices = "  ".join(f"[green]#{g['index']}[/green]" for g in gpus)
+        details = "  ".join(
+            f"#{g['index']} {g['memory_used_gb']:.0f}/{g['memory_total_gb']:.0f}G"
+            for g in gpus
+        )
+        console.print(f"[cyan bold]{host}[/cyan bold]  {indices}    [dim]{details}[/dim]")
+
+
 async def run(config: Config, once: bool = False) -> None:
     notify_state = NotifyState()
 
@@ -305,7 +337,18 @@ def main() -> None:
     parser.add_argument(
         "--once",
         action="store_true",
-        help="只查询一次并打印结果，不持续监控",
+        help="只查询一次并打印完整表格，不持续监控",
+    )
+    parser.add_argument(
+        "--query",
+        action="store_true",
+        help="只输出当前空闲 GPU 列表",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="as_json",
+        help="与 --query 配合，输出 JSON 格式",
     )
     parser.add_argument(
         "--interval",
@@ -320,7 +363,10 @@ def main() -> None:
         config.poll_interval = args.interval
 
     try:
-        asyncio.run(run(config, once=args.once))
+        if args.query:
+            asyncio.run(query_idle(config, as_json=args.as_json))
+        else:
+            asyncio.run(run(config, once=args.once))
     except KeyboardInterrupt:
         console.print("\n[dim]已停止。[/dim]")
 

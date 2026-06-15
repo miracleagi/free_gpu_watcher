@@ -48,14 +48,20 @@ cmd_once() {
     "$PYTHON" watcher.py --once
 }
 
+cmd_query() {
+    cd "$SCRIPT_DIR"
+    "$PYTHON" watcher.py --query "$@"
+}
+
 case "${1:-}" in
     start)  cmd_start  ;;
     stop)   cmd_stop   ;;
     status) cmd_status ;;
     logs)   cmd_logs   ;;
     once)   cmd_once   ;;
+    query)  shift; cmd_query "$@" ;;
     *)
-        echo "Usage: $(basename "$0") {start|stop|status|logs|once}"
+        echo "Usage: $(basename "$0") {start|stop|status|logs|once|query [--json]}"
         exit 1
         ;;
 esac
