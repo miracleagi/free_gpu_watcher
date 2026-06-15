@@ -161,7 +161,8 @@ def send_notification(title: str, subtitle: str, body: str) -> None:
     subprocess.run(
         [
             "osascript", "-e",
-            f'display notification "{esc(body)}" with title "{esc(title)}" subtitle "{esc(subtitle)}" sound name "Ping"',
+            f'display notification "{esc(body)}" with title "{esc(title)}" '
+            f'subtitle "{esc(subtitle)}" sound name "Ping"',
         ],
         capture_output=True,
     )
@@ -281,24 +282,25 @@ async def run(config: Config, once: bool = False) -> None:
 
             events = notify_state.check(statuses, config)
             if events:
-                if len(events) == 1:
-                    host_name, gpu = events[0]
-                    subtitle = f"{host_name}  ·  GPU #{gpu.index}"
-                    body = (
-                        f"{gpu.name}"
-                        f"  |  Util {gpu.utilization_pct}%"
-                        f"  ·  Mem {gpu.memory_used_mb/1024:.1f}/{gpu.memory_total_mb/1024:.1f} G"
+                # 按 host 分组，一条通知，body 每行一台机器
+                from collections import defaultdict
+                by_host: dict[str, list[GPUInfo]] = defaultdict(list)
+                for h, g in events:
+                    by_host[h].append(g)
+
+                n = len(events)
+                title = "GPU 空闲" if n == 1 else f"GPU 空闲 · {n} 块"
+                subtitle = "  ·  ".join(
+                    f"{h} " + " ".join(f"#{g.index}" for g in gpus)
+                    for h, gpus in by_host.items()
+                )
+                body = "\n".join(
+                    f"{h}:  " + "   ".join(
+                        f"#{g.index} ({g.utilization_pct}%  {g.memory_used_mb/1024:.0f}/{g.memory_total_mb/1024:.0f}G)"
+                        for g in gpus
                     )
-                else:
-                    subtitle = "  ·  ".join(
-                        dict.fromkeys(h for h, _ in events)  # 去重保序
-                    )
-                    body = "\n".join(
-                        f"{h}  GPU#{g.index}  Util {g.utilization_pct}%  "
-                        f"Mem {g.memory_used_mb/1024:.1f}/{g.memory_total_mb/1024:.1f}G"
-                        for h, g in events
-                    )
-                title = f"GPU 空闲" if len(events) == 1 else f"GPU 空闲 · {len(events)} 块"
+                    for h, gpus in by_host.items()
+                )
                 send_notification(title, subtitle, body)
                 live.console.log(f"[bold green][通知][/bold green] {title}  {subtitle}")
 
