@@ -155,13 +155,13 @@ def is_idle(gpu: GPUInfo, config: Config) -> bool:
 
 # ─── macOS notification ───────────────────────────────────────────────────────
 
-def send_notification(title: str, body: str) -> None:
-    safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
-    safe_body = body.replace("\\", "\\\\").replace('"', '\\"')
+def send_notification(title: str, subtitle: str, body: str) -> None:
+    def esc(s: str) -> str:
+        return s.replace("\\", "\\\\").replace('"', '\\"')
     subprocess.run(
         [
             "osascript", "-e",
-            f'display notification "{safe_body}" with title "{safe_title}" sound name "Ping"',
+            f'display notification "{esc(body)}" with title "{esc(title)}" subtitle "{esc(subtitle)}" sound name "Ping"',
         ],
         capture_output=True,
     )
@@ -234,10 +234,12 @@ class NotifyState:
         # (host_name, gpu_index) -> was idle in last round
         self._prev_idle: dict[tuple[str, int], bool] = {}
 
-    def check(self, statuses: list[HostStatus], config: Config) -> list[str]:
-        """返回本轮需要通知的 GPU 描述列表。"""
+    def check(
+        self, statuses: list[HostStatus], config: Config
+    ) -> list[tuple[str, GPUInfo]]:
+        """返回本轮需要通知的 (host_name, gpu) 列表。"""
         now = time.monotonic()
-        messages: list[str] = []
+        events: list[tuple[str, GPUInfo]] = []
 
         for status in statuses:
             for gpu in status.gpus:
@@ -246,21 +248,16 @@ class NotifyState:
                 was_idle = self._prev_idle.get(key, False)
                 last_t = self._last_notified.get(key, 0.0)
 
-                # 触发条件：新变空闲，或持续空闲且已超过 cooldown
                 became_free = current_idle and not was_idle
                 still_free_timeout = current_idle and (now - last_t >= self.cooldown)
 
                 if became_free or still_free_timeout:
-                    messages.append(
-                        f"{status.name}  GPU#{gpu.index} {gpu.name}\n"
-                        f"  Util {gpu.utilization_pct}%  "
-                        f"Mem {gpu.memory_used_mb/1024:.1f}/{gpu.memory_total_mb/1024:.1f}G"
-                    )
+                    events.append((status.name, gpu))
                     self._last_notified[key] = now
 
                 self._prev_idle[key] = current_idle
 
-        return messages
+        return events
 
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
@@ -282,12 +279,16 @@ async def run(config: Config, once: bool = False) -> None:
         while True:
             statuses = await poll_all(config.hosts, config)
 
-            messages = notify_state.check(statuses, config)
-            if messages:
-                body = "\n".join(messages)
-                send_notification("GPU 空闲了！", body)
-                # 同时在终端打印一行提示
-                live.console.log(f"[bold green][通知][/bold green] {body.splitlines()[0]}")
+            events = notify_state.check(statuses, config)
+            for host_name, gpu in events:
+                subtitle = f"{host_name}  ·  GPU #{gpu.index}"
+                body = (
+                    f"{gpu.name}"
+                    f"  |  Util {gpu.utilization_pct}%"
+                    f"  ·  Mem {gpu.memory_used_mb/1024:.1f} / {gpu.memory_total_mb/1024:.1f} G"
+                )
+                send_notification("GPU 空闲", subtitle, body)
+                live.console.log(f"[bold green][通知][/bold green] {subtitle}  {body}")
 
             live.update(build_table(statuses, config))
             await asyncio.sleep(config.poll_interval)
