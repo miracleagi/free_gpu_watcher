@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# GPU watcher 后台管理脚本
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PID_FILE="$SCRIPT_DIR/.watcher.pid"
+LOG_FILE="$SCRIPT_DIR/watcher.log"
+PYTHON="${PYTHON:-python3}"
+
+_is_running() {
+    [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null
+}
+
+cmd_start() {
+    if _is_running; then
+        echo "Already running (PID $(cat "$PID_FILE"))"
+        return 1
+    fi
+    cd "$SCRIPT_DIR"
+    nohup "$PYTHON" watcher.py >> "$LOG_FILE" 2>&1 &
+    echo $! > "$PID_FILE"
+    echo "Started (PID $!)"
+    echo "Log: $LOG_FILE"
+}
+
+cmd_stop() {
+    if ! _is_running; then
+        echo "Not running"
+        return 1
+    fi
+    kill "$(cat "$PID_FILE")" && rm "$PID_FILE"
+    echo "Stopped"
+}
+
+cmd_status() {
+    if _is_running; then
+        echo "Running (PID $(cat "$PID_FILE"))"
+    else
+        echo "Not running"
+    fi
+}
+
+cmd_logs() {
+    tail -f "$LOG_FILE"
+}
+
+cmd_once() {
+    cd "$SCRIPT_DIR"
+    "$PYTHON" watcher.py --once
+}
+
+case "${1:-}" in
+    start)  cmd_start  ;;
+    stop)   cmd_stop   ;;
+    status) cmd_status ;;
+    logs)   cmd_logs   ;;
+    once)   cmd_once   ;;
+    *)
+        echo "Usage: $(basename "$0") {start|stop|status|logs|once}"
+        exit 1
+        ;;
+esac
