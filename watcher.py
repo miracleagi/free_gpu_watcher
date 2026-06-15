@@ -280,15 +280,27 @@ async def run(config: Config, once: bool = False) -> None:
             statuses = await poll_all(config.hosts, config)
 
             events = notify_state.check(statuses, config)
-            for host_name, gpu in events:
-                subtitle = f"{host_name}  ·  GPU #{gpu.index}"
-                body = (
-                    f"{gpu.name}"
-                    f"  |  Util {gpu.utilization_pct}%"
-                    f"  ·  Mem {gpu.memory_used_mb/1024:.1f} / {gpu.memory_total_mb/1024:.1f} G"
-                )
-                send_notification("GPU 空闲", subtitle, body)
-                live.console.log(f"[bold green][通知][/bold green] {subtitle}  {body}")
+            if events:
+                if len(events) == 1:
+                    host_name, gpu = events[0]
+                    subtitle = f"{host_name}  ·  GPU #{gpu.index}"
+                    body = (
+                        f"{gpu.name}"
+                        f"  |  Util {gpu.utilization_pct}%"
+                        f"  ·  Mem {gpu.memory_used_mb/1024:.1f}/{gpu.memory_total_mb/1024:.1f} G"
+                    )
+                else:
+                    subtitle = "  ·  ".join(
+                        dict.fromkeys(h for h, _ in events)  # 去重保序
+                    )
+                    body = "\n".join(
+                        f"{h}  GPU#{g.index}  Util {g.utilization_pct}%  "
+                        f"Mem {g.memory_used_mb/1024:.1f}/{g.memory_total_mb/1024:.1f}G"
+                        for h, g in events
+                    )
+                title = f"GPU 空闲" if len(events) == 1 else f"GPU 空闲 · {len(events)} 块"
+                send_notification(title, subtitle, body)
+                live.console.log(f"[bold green][通知][/bold green] {title}  {subtitle}")
 
             live.update(build_table(statuses, config))
             await asyncio.sleep(config.poll_interval)
