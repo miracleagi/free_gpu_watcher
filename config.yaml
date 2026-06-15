@@ -2,7 +2,7 @@
 poll_interval: 60
 
 # 同一块 GPU 空闲后多久才再次通知（秒），防止轰炸
-notify_cooldown: 300
+notify_cooldown: 1800
 
 # SSH 超时
 ssh_timeout: 10
