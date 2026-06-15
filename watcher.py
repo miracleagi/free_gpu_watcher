@@ -286,14 +286,14 @@ async def run(config: Config, once: bool = False) -> None:
                     by_host[h].append(g)
 
                 n = len(events)
-                title = "GPU 空闲" if n == 1 else f"GPU 空闲 · {n} 块"
-                subtitle = "  ·  ".join(
-                    f"{h} {len(gpus)}块"
+                title = "GPU 空闲" if n == 1 else f"GPU 空闲 · {n}块"
+                subtitle = "  /  ".join(
+                    f"{h}({len(gpus)}块)"
                     for h, gpus in by_host.items()
                 )
                 body = "\n".join(
-                    f"{h}:  " + "   ".join(
-                        f"#{g.index} ({g.utilization_pct}%  {g.memory_used_mb/1024:.0f}/{g.memory_total_mb/1024:.0f}G)"
+                    f"{h}: " + "  ".join(
+                        f"#{g.index} {g.memory_used_mb/1024:.0f}/{g.memory_total_mb/1024:.0f}G"
                         for g in gpus
                     )
                     for h, gpus in by_host.items()
