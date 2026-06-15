@@ -1,0 +1,39 @@
+# 轮询间隔（秒）
+poll_interval: 60
+
+# 同一块 GPU 空闲后多久才再次通知（秒），防止轰炸
+notify_cooldown: 300
+
+# SSH 超时
+ssh_timeout: 10
+ssh_connect_timeout: 5
+
+# 空闲判断阈值：两个条件同时满足才算空闲
+idle_threshold:
+  utilization_pct: 10   # GPU 计算利用率低于此值(%)
+  memory_pct: 20        # 显存使用率低于此值(%)
+
+hosts:
+  - name: "a100_gpu8_share"
+    host: "172.16.0.39"
+    user: "zhengchuanchuan"
+    port: 2222
+    key: "~/.ssh/id_rsa"
+
+  - name: "new_a100"
+    host: "172.16.53.255"
+    user: "zhengchuanchuan"
+    port: 2222
+    key: "~/.ssh/id_rsa"
+
+  - name: "new_a100_2"
+    host: "172.19.181.255"
+    user: "zhengchuanchuan"
+    port: 2222
+    key: "~/.ssh/id_rsa"
+
+  - name: "dev_5090"
+    host: "10.19.64.48"
+    user: "zhengchuanchuan"
+    port: 22
+    key: "~/.ssh/id_ed25519"
