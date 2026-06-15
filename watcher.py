@@ -147,10 +147,7 @@ async def poll_all(host_cfgs: list[dict], config: Config) -> list[HostStatus]:
 # ─── Idle detection ───────────────────────────────────────────────────────────
 
 def is_idle(gpu: GPUInfo, config: Config) -> bool:
-    return (
-        gpu.utilization_pct <= config.idle_util_threshold
-        and gpu.memory_pct <= config.idle_memory_threshold
-    )
+    return gpu.memory_pct <= config.idle_memory_threshold
 
 
 # ─── macOS notification ───────────────────────────────────────────────────────

@@ -8,10 +8,9 @@ notify_cooldown: 600
 ssh_timeout: 10
 ssh_connect_timeout: 5
 
-# 空闲判断阈值：两个条件同时满足才算空闲
+# 空闲判断阈值：显存使用率低于此值即视为空闲
 idle_threshold:
-  utilization_pct: 10   # GPU 计算利用率低于此值(%)
-  memory_pct: 20        # 显存使用率低于此值(%)
+  memory_pct: 10        # 显存使用率低于此值(%)即为空闲（剩余90%）
 
 hosts:
   - name: "a100_gpu8_share"
