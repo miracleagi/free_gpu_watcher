@@ -13,26 +13,14 @@ idle_threshold:
   memory_pct: 10        # 显存使用率低于此值(%)即为空闲（剩余90%）
 
 hosts:
-  - name: "a100_gpu8_share"
-    host: "172.16.0.39"
-    user: "zhengchuanchuan"
-    port: 2222
-    key: "~/.ssh/id_rsa"
-
-  - name: "new_a100"
-    host: "172.16.53.255"
-    user: "zhengchuanchuan"
-    port: 2222
-    key: "~/.ssh/id_rsa"
-
-  - name: "new_a100_2"
-    host: "172.19.181.255"
-    user: "zhengchuanchuan"
-    port: 2222
-    key: "~/.ssh/id_rsa"
-
-  - name: "dev_5090"
-    host: "10.19.64.48"
-    user: "zhengchuanchuan"
+  - name: "server-1"
+    host: "192.168.1.100"
+    user: "yourname"
     port: 22
-    key: "~/.ssh/id_ed25519"
+    key: "~/.ssh/id_rsa"
+
+  - name: "server-2"
+    host: "192.168.1.101"
+    user: "yourname"
+    port: 2222
+    key: "~/.ssh/id_rsa"
